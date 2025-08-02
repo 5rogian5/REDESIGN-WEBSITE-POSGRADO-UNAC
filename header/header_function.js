@@ -134,20 +134,111 @@ function initializeHeaderFunctions() {
             initializeElements();
         }
         
-        if (event.key === 'Escape' && mobileMenu && mobileMenu.classList.contains('active')) {
-            mobileMenu.classList.remove('active');
-            mobileBtn.classList.remove('active');
-            document.body.classList.remove('mobile-menu-open');
+        if (event.key === 'Escape') {
+            // Cerrar menú móvil si está abierto
+            if (mobileMenu && mobileMenu.classList.contains('active')) {
+                mobileMenu.classList.remove('active');
+                mobileBtn.classList.remove('active');
+                document.body.classList.remove('mobile-menu-open');
+                
+                document.querySelectorAll('.mobile-dropdown').forEach(dropdown => {
+                    dropdown.classList.remove('active');
+                });
+            }
             
-            document.querySelectorAll('.mobile-dropdown').forEach(dropdown => {
-                dropdown.classList.remove('active');
+            // Cerrar dropdowns del menú desktop
+            document.querySelectorAll('.dropdown-menu').forEach(dropdown => {
+                dropdown.style.opacity = '0';
+                dropdown.style.visibility = 'hidden';
             });
         }
     });
 
+    // Funciones para mejorar la accesibilidad de los dropdowns desktop
+    function initializeDesktopDropdowns() {
+        const navItems = document.querySelectorAll('.nav-item');
+        
+        navItems.forEach(navItem => {
+            const navLink = navItem.querySelector('.nav-link.has-dropdown');
+            const dropdown = navItem.querySelector('.dropdown-menu');
+            const dropdownItems = navItem.querySelectorAll('.dropdown-item');
+            
+            if (!navLink || !dropdown) return;
+            
+            // Manejar la navegación por teclado en dropdowns
+            navLink.addEventListener('keydown', function(event) {
+                if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    
+                    // Mostrar dropdown
+                    dropdown.style.opacity = '1';
+                    dropdown.style.visibility = 'visible';
+                    dropdown.style.transform = 'translateX(-50%) translateY(0)';
+                    navLink.setAttribute('aria-expanded', 'true');
+                    
+                    // Enfocar el primer item si existe
+                    if (dropdownItems.length > 0) {
+                        dropdownItems[0].focus();
+                        dropdownItems[0].setAttribute('tabindex', '0');
+                    }
+                }
+            });
+            
+            // Manejar la navegación entre items del dropdown
+            dropdownItems.forEach((item, index) => {
+                item.addEventListener('keydown', function(event) {
+                    if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        const nextItem = dropdownItems[index + 1] || dropdownItems[0];
+                        nextItem.focus();
+                        nextItem.setAttribute('tabindex', '0');
+                        item.setAttribute('tabindex', '-1');
+                    } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        const prevItem = dropdownItems[index - 1] || dropdownItems[dropdownItems.length - 1];
+                        prevItem.focus();
+                        prevItem.setAttribute('tabindex', '0');
+                        item.setAttribute('tabindex', '-1');
+                    } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        dropdown.style.opacity = '0';
+                        dropdown.style.visibility = 'hidden';
+                        navLink.setAttribute('aria-expanded', 'false');
+                        navLink.focus();
+                        
+                        // Resetear tabindex
+                        dropdownItems.forEach(di => di.setAttribute('tabindex', '-1'));
+                    }
+                });
+                
+                // Cerrar dropdown al hacer clic en un item
+                item.addEventListener('click', function() {
+                    dropdown.style.opacity = '0';
+                    dropdown.style.visibility = 'hidden';
+                    navLink.setAttribute('aria-expanded', 'false');
+                    dropdownItems.forEach(di => di.setAttribute('tabindex', '-1'));
+                });
+            });
+            
+            // Cerrar dropdown cuando se pierde el focus
+            navItem.addEventListener('focusout', function(event) {
+                // Usar setTimeout para permitir que el nuevo elemento reciba focus
+                setTimeout(() => {
+                    if (!navItem.contains(document.activeElement)) {
+                        dropdown.style.opacity = '0';
+                        dropdown.style.visibility = 'hidden';
+                        navLink.setAttribute('aria-expanded', 'false');
+                        dropdownItems.forEach(di => di.setAttribute('tabindex', '-1'));
+                    }
+                }, 100);
+            });
+        });
+    }
+
     // Esperar un poco más y reintentar inicialización
     setTimeout(() => {
         initializeElements();
+        initializeDesktopDropdowns(); // Inicializar funcionalidad de dropdowns desktop
     }, 100);
 
     // Make functions globally available - REEMPLAZAR las funciones placeholder
